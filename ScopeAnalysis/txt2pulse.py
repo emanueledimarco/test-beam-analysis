@@ -5,6 +5,8 @@ import re
 import os, os.path
 from array import array
 
+from PlotUtils import customROOTstyle
+
 ## safe batch mode                                                                                                                                                                                                                           
 import sys
 args = sys.argv[:]
@@ -34,6 +36,7 @@ class PulseTxtFile:
               print "Error parsing cut line [%s]" % line.strip()
               raise
         self.options = options
+
     def getPulse(self,averageNsamples=None):
         if averageNsamples:
             xav=[]; yav=[]
@@ -49,12 +52,14 @@ class PulseTxtFile:
             pulse = ROOT.TGraph(len(self.x),array('f',self.x),array('f',self.y))
         pulse.SetName(""); pulse.SetTitle("")
         return pulse
+
     def plot(self,saveName,doWide=False,extensions="pdf"):
         plotformat = (1200,600) if doWide else (600,600)
         sf = 20./plotformat[0]
         height=plotformat[1]
         ROOT.gStyle.SetPadLeftMargin(600.*0.18/plotformat[0])
         ROOT.gStyle.SetPaperSize(20.,sf*plotformat[1])
+        customROOTstyle()
         c1 = ROOT.TCanvas(saveName+"_canvas",saveName,plotformat[0],height)
         g = self.getPulse(options.ngroup)
         colors = {"calorimeter":ROOT.kRed, "PMT":ROOT.kBlue} 
