@@ -1,0 +1,10 @@
+__init__.py
+*.pyc
+.*.swp
+.#*
+#*#
+*~
+*cc.so
+*cc.d
+*.pcm
+#.root
