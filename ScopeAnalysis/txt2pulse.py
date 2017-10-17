@@ -3,7 +3,7 @@
 from math import *
 import re, os, os.path, operator
 from array import array
-from collections import OrderedDict
+import numpy as np
 
 from PlotUtils import customROOTstyle
 
@@ -58,26 +58,38 @@ class PulseTxtFile:
                 yav.append(sum(self.y[imin:imax])/len(self.y[imin:imax]))
                 #print "averaging imin=%d,imax=%d,xav=%f,yav=%f" % (imin,imax,xav[-1],yav[-1])
             pulse = ROOT.TGraph(len(xav),array('f',xav),array('f',yav))
-            self.pedestal = 0.5*(yav[0]+yav[-1])
-            self.xy=[GraphVal(xav[i],yav[i]) for i in xrange(len(xav))]
+            pedestal = 0.5*(yav[0]+yav[-1])
+            self.xy=[GraphVal(xav[i],yav[i]-pedestal) for i in xrange(len(xav))]
             self.xy.sort(key = lambda point : point.y) 
         else:
-            self.xy=[GraphVal(self.x[i],self.y[i]) for i in xrange(len(self.x))]
-            self.xy.sort(key = lambda point : point.y) 
             pulse = ROOT.TGraph(len(self.x),array('f',self.x),array('f',self.y))
-            self.pedestal = 0.5*(self.y[0]+self.y[-1])
+            pedestal = 0.5*(self.y[0]+self.y[-1])
+            self.xy=[GraphVal(self.x[i],self.y[i]-pedestal) for i in xrange(len(self.x))]
+            self.xy.sort(key = lambda point : point.y) 
         pulse.SetName(""); pulse.SetTitle("")
+        yredge = np.array(self.y[-100:]) # dangerous if the signal is not very centered! find a better way
+        self.noise = np.sqrt(np.mean(yredge**2))
         self.pulse = pulse
         return pulse
 
     def amplitude(self):
         if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
-        return self.xy[0].y-self.pedestal
+        return self.xy[0].y
 
     def time(self):
         if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
         return self.xy[0].x
 
+    def getPeaks(self):
+        peaks=[]
+        if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
+        localmin=GraphVal(-1000,1000)
+        for i,point in enumerate(self.xy):
+            if abs(point.y)>5*self.noise and point.y<localmin.y: 
+                localmin.x=point.x; localmin.y=point.y
+            if sum([val.y for val in self.xy[i-10:i]])/10<5*self.noise: peaks.append(localmin)
+        return peaks
+                
     def plot(self,saveName,doWide=False,extensions="pdf"):
         plotformat = (1200,600) if doWide else (600,600)
         sf = 20./plotformat[0]
@@ -110,3 +122,4 @@ if __name__ == "__main__":
     chunk = tokens[-1].split("Run")[-1].split(".")[0]
     print "run=%s, chunk=%s" % (run,chunk)
     PulsePlot.plot("pulse_run%s_chunk%s" %(run,chunk),ext)
+    PulsePlot.getPeaks()
