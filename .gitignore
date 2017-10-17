@@ -7,4 +7,4 @@ __init__.py
 *cc.so
 *cc.d
 *.pcm
-#.root
+*.root
