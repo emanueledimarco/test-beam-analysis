@@ -71,11 +71,11 @@ class PulseTxtFile:
         return pulse
 
     def amplitude(self):
-        if not hasattr(self,'pulse'): self.getPulse(options.ngroup)
+        if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
         return self.xy[0].y-self.pedestal
 
     def time(self):
-        if not hasattr(self,'pulse'): self.getPulse(options.ngroup)
+        if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
         return self.xy[0].x
 
     def plot(self,saveName,doWide=False,extensions="pdf"):
@@ -86,8 +86,7 @@ class PulseTxtFile:
         ROOT.gStyle.SetPaperSize(20.,sf*plotformat[1])
         customROOTstyle()
         c1 = ROOT.TCanvas(saveName+"_canvas",saveName,plotformat[0],height)
-        g = self.getPulse(options.ngroup)
-        print "Amplitude = ",self.amplitude(),"  Time = ",self.time()
+        g = self.getPulse(self.options.ngroup)
         colors = {"calorimeter":ROOT.kRed, "PMT":ROOT.kBlue} 
         g.SetLineColor(colors[self.channel])
         g.Draw("AL")
