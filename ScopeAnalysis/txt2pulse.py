@@ -102,10 +102,10 @@ class PulseTxtFile:
                 localmin.width = localmin.width+sampleWidth
                 onPeak=True
             if abs(point.y)<min(minAmpl,3*self.noise) and onPeak==True:
-                #if len(peaks)==0 or abs(localmin.x-peaks[-1].x)<peaks[-1].width: # remove afterpulses
-                peaks.append(GraphVal(localmin.x,localmin.y))
-                localmin.x=-1000; localmin.y=1000; localmin.width=0;
-                onPeak=False
+                if len(peaks)==0 or abs(localmin.x-peaks[-1].x)>2.*peaks[-1].width: # remove afterpulses
+                    peaks.append(GraphVal(localmin.x,localmin.y,localmin.width))
+                    localmin.x=-1000; localmin.y=1000; localmin.width=0;
+                    onPeak=False
         self.peaks = peaks
         return peaks
     
