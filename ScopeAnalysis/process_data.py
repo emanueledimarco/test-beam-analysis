@@ -10,7 +10,7 @@ if __name__ == "__main__":
     parser = OptionParser(usage="%prog [options] DIR ")
     parser.add_option("--rmin", dest="runMin", type=int, default=None, help="min run number to analyze");
     parser.add_option("--rmax", dest="runMax", type=int, default=None, help="max run number to analyze");
-    parser.add_option("--ngroup", dest="ngroup", type=int, default=None, help="average the pulse every ngroup samples");
+    parser.add_option("--ngroup", dest="ngroup", type=int, default=100, help="average the pulse every ngroup samples");
 
     (options, args) = parser.parse_args()
     if len(args)<1:

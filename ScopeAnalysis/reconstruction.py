@@ -13,10 +13,13 @@ class PulseReconstruction:
         self.outputFileName=outputFileName
         self.options=options
     def beginJob(self,outTree):
-        outTree.branch("run", "I", n=1)
-        outTree.branch("event", "I", n=1)
-        outTree.branch("amplitude", "F", n=3)
-        outTree.branch("time", "F", n=3)
+        outTree.branch("run", "I")
+        outTree.branch("event", "I")
+        outTree.branch("amplitude_calo", "F")
+        outTree.branch("time_calo", "F")
+        outTree.branch("time_btf", "F")
+        outTree.branch("amplitude_pmt", "F", lenVar="nPeaks")
+        outTree.branch("time_pmt", "F", lenVar="nPeaks")
     def endJob(self,outTree,outFile):
         pass
     def run(self):
@@ -31,17 +34,20 @@ class PulseReconstruction:
         for run in self.runs:
             runi = int((os.path.basename(run).split('Run')[-1]).lstrip('0'))
             for chunk in xrange(self.nchunks):
-                amplitude=[]; time=[];
+                outTree.fillBranch("run",runi)
+                outTree.fillBranch("event",chunk)
                 for ic,channel in enumerate(['C1','C3','C4']):
                     inputf = "%s/%sRun%05d.txt"  % (run,channel,chunk)
                     print "Analyzing pulse from ",inputf
                     pulse = PulseTxtFile(inputf,self.options)
-                    amplitude.append(pulse.amplitude())
-                    time.append(pulse.time())
-                outTree.fillBranch("run",runi)
-                outTree.fillBranch("event",chunk)
-                outTree.fillBranch("amplitude",amplitude)
-                outTree.fillBranch("time",time)
+                    if channel=='C1': 
+                        outTree.fillBranch("time_btf",pulse.time())
+                    elif channel=='C4':
+                        outTree.fillBranch("amplitude_calo",pulse.amplitude())
+                        outTree.fillBranch("time_calo",pulse.time())
+                    else:
+                        outTree.fillBranch("amplitude_pmt",pulse.amplitudes())
+                        outTree.fillBranch("time_pmt",pulse.times())
                 outTree.fill()
 
         outTree.write()

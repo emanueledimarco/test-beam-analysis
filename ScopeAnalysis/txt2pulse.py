@@ -17,13 +17,15 @@ ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 class GraphVal:
-    def __init__(self,x,y):
+    def __init__(self,x,y,w=0):
         self.x=x
         self.y=y
+        self.width=w
 
 class PulseTxtFile:
     def __init__(self,txtFile,options=None):
         if "C3" in txtFile: self.channel = "PMT"
+        elif "C1" in txtFile: self.channel = "BTF"
         elif "C4" in txtFile: self.channel = "calorimeter"
         else: self.channel = "Unknown"
         self.x = []
@@ -60,12 +62,10 @@ class PulseTxtFile:
             pulse = ROOT.TGraph(len(xav),array('f',xav),array('f',yav))
             pedestal = 0.5*(yav[0]+yav[-1])
             self.xy=[GraphVal(xav[i],yav[i]-pedestal) for i in xrange(len(xav))]
-            self.xy.sort(key = lambda point : point.y) 
         else:
             pulse = ROOT.TGraph(len(self.x),array('f',self.x),array('f',self.y))
             pedestal = 0.5*(self.y[0]+self.y[-1])
             self.xy=[GraphVal(self.x[i],self.y[i]-pedestal) for i in xrange(len(self.x))]
-            self.xy.sort(key = lambda point : point.y) 
         pulse.SetName(""); pulse.SetTitle("")
         yredge = np.array(self.y[-100:]) # dangerous if the signal is not very centered! find a better way
         self.noise = np.sqrt(np.mean(yredge**2))
@@ -74,22 +74,41 @@ class PulseTxtFile:
 
     def amplitude(self):
         if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
-        return self.xy[0].y
+        sortedvals = sorted(self.xy, key = lambda point : point.y)
+        return sortedvals[0].y
 
     def time(self):
         if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
-        return self.xy[0].x
+        sortedvals = sorted(self.xy, key = lambda point : point.y)
+        return sortedvals[0].x
 
-    def getPeaks(self):
+    def amplitudes(self):
+        if not hasattr(self,'peaks'): self.getPeaks()
+        return [peak.y for peak in self.peaks]
+
+    def times(self):
+        if not hasattr(self,'peaks'): self.getPeaks()
+        return [peak.x for peak in self.peaks]
+
+    def getPeaks(self,minAmpl=0.005):
         peaks=[]
         if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
         localmin=GraphVal(-1000,1000)
+        onPeak=False
+        sampleWidth=self.xy[1].x-self.xy[0].x
         for i,point in enumerate(self.xy):
-            if abs(point.y)>5*self.noise and point.y<localmin.y: 
-                localmin.x=point.x; localmin.y=point.y
-            if sum([val.y for val in self.xy[i-10:i]])/10<5*self.noise: peaks.append(localmin)
+            if abs(point.y)>max(3*self.noise,minAmpl) and point.y<localmin.y: 
+                localmin.x=point.x; localmin.y=point.y;
+                localmin.width = localmin.width+sampleWidth
+                onPeak=True
+            if abs(point.y)<min(minAmpl,3*self.noise) and onPeak==True:
+                #if len(peaks)==0 or abs(localmin.x-peaks[-1].x)<peaks[-1].width: # remove afterpulses
+                peaks.append(GraphVal(localmin.x,localmin.y))
+                localmin.x=-1000; localmin.y=1000; localmin.width=0;
+                onPeak=False
+        self.peaks = peaks
         return peaks
-                
+    
     def plot(self,saveName,doWide=False,extensions="pdf"):
         plotformat = (1200,600) if doWide else (600,600)
         sf = 20./plotformat[0]
@@ -122,4 +141,7 @@ if __name__ == "__main__":
     chunk = tokens[-1].split("Run")[-1].split(".")[0]
     print "run=%s, chunk=%s" % (run,chunk)
     PulsePlot.plot("pulse_run%s_chunk%s" %(run,chunk),ext)
-    PulsePlot.getPeaks()
+
+    peaks = PulsePlot.getPeaks()
+    for i,p in enumerate(peaks):
+        print "Peak # %d has amplitude = %f V and time = %f ns" %(i,p.y,p.x)
