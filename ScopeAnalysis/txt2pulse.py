@@ -67,7 +67,7 @@ class PulseTxtFile:
             pedestal = 0.5*(self.y[0]+self.y[-1])
             self.xy=[GraphVal(self.x[i],self.y[i]-pedestal) for i in xrange(len(self.x))]
         pulse.SetName(""); pulse.SetTitle("")
-        yredge = np.array(self.y[-100:]) # dangerous if the signal is not very centered! find a better way
+        yredge = np.array(self.y[:10]) # dangerous if the signal is not very centered! find a better way
         self.noise = np.sqrt(np.mean(yredge**2))
         self.pulse = pulse
         return pulse
