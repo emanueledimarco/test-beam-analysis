@@ -4,7 +4,7 @@ import os
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 from output import OutputTree
-from txt2pulse import PulseTxtFile
+from txt2pulse import *
 
 class PulseReconstruction:
     def __init__(self,dirs,nchunks=100,outputFileName="reco.root",options=None):

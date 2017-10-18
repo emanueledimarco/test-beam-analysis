@@ -3,14 +3,15 @@
 import os, sys
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
-from reconstruction import PulseReconstruction
+from reconstruction import *
 
 if __name__ == "__main__":
     from optparse import OptionParser
     parser = OptionParser(usage="%prog [options] DIR ")
-    parser.add_option("--rmin", dest="runMin", type=int, default=None, help="min run number to analyze");
-    parser.add_option("--rmax", dest="runMax", type=int, default=None, help="max run number to analyze");
-    parser.add_option("--ngroup", dest="ngroup", type=int, default=100, help="average the pulse every ngroup samples");
+    addTxt2PulseOptions(parser)
+    parser.add_option("--rmin", dest="runMin", type="int", default=None, help="min run number to analyze");
+    parser.add_option("--rmax", dest="runMax", type="int", default=None, help="max run number to analyze");
+    parser.add_option("-o","--out", dest="outFile", type="string", default="reco.root", help="name of the output root file");
 
     (options, args) = parser.parse_args()
     if len(args)<1:
@@ -29,5 +30,5 @@ if __name__ == "__main__":
         
     print "Will run on the following runs: ", selected_runs
     
-    p=PulseReconstruction(selected_runs,options=options)
+    p=PulseReconstruction(selected_runs,options=options,outputFileName=options.outFile)
     p.run()

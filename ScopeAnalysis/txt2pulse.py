@@ -62,13 +62,15 @@ class PulseTxtFile:
             pulse = ROOT.TGraph(len(xav),array('f',xav),array('f',yav))
             pedestal = 0.5*(yav[0]+yav[-1])
             self.xy=[GraphVal(xav[i],yav[i]-pedestal) for i in xrange(len(xav))]
+            yredge = np.array([point.y for point in self.xy[:3]]) # dangerous if the signal is not very centered! find a better way
+            self.noise = np.sqrt(np.mean(yredge**2))
         else:
             pulse = ROOT.TGraph(len(self.x),array('f',self.x),array('f',self.y))
             pedestal = 0.5*(self.y[0]+self.y[-1])
             self.xy=[GraphVal(self.x[i],self.y[i]-pedestal) for i in xrange(len(self.x))]
+            yredge = np.array(self.y[:3]) # dangerous if the signal is not very centered! find a better way
+            self.noise = np.sqrt(np.mean(yredge**2))
         pulse.SetName(""); pulse.SetTitle("")
-        yredge = np.array(self.y[:10]) # dangerous if the signal is not very centered! find a better way
-        self.noise = np.sqrt(np.mean(yredge**2))
         self.pulse = pulse
         return pulse
 
@@ -90,18 +92,18 @@ class PulseTxtFile:
         if not hasattr(self,'peaks'): self.getPeaks()
         return [peak.x for peak in self.peaks]
 
-    def getPeaks(self,minAmpl=0.005):
+    def getPeaks(self):
         peaks=[]
         if not hasattr(self,'pulse'): self.getPulse(self.options.ngroup)
         localmin=GraphVal(-1000,1000)
         onPeak=False
         sampleWidth=self.xy[1].x-self.xy[0].x
         for i,point in enumerate(self.xy):
-            if abs(point.y)>max(3*self.noise,minAmpl) and point.y<localmin.y: 
+            if abs(point.y)>max(3.*self.noise,self.options.minampl) and point.y<localmin.y: 
                 localmin.x=point.x; localmin.y=point.y;
                 localmin.width = localmin.width+sampleWidth
                 onPeak=True
-            if abs(point.y)<min(minAmpl,3*self.noise) and onPeak==True:
+            if abs(point.y)<min(self.options.minampl,3*self.noise) and onPeak==True:
                 if len(peaks)==0 or abs(localmin.x-peaks[-1].x)>2.*peaks[-1].width: # remove afterpulses
                     peaks.append(GraphVal(localmin.x,localmin.y,localmin.width))
                     localmin.x=-1000; localmin.y=1000; localmin.width=0;
@@ -126,13 +128,16 @@ class PulseTxtFile:
         g.Draw("L")
         for ext in extensions.split(","):
             c1.Print("%s_%s.%s"%(saveName,self.channel,ext))
+    
+def addTxt2PulseOptions(parser):
+    parser.add_option("--print", dest="printPlots", type="string", default="png,pdf,txt", help="print out plots in this format or formats (e.g. 'png,pdf,txt')");
+    parser.add_option("--ngroup", dest="ngroup", type="int", default=100, help="average the pulse every ngroup samples");
+    parser.add_option("--minampl", dest="minampl", type="float", default=0.003, help="minimum amplitude required to define a peak (in Volts)");
 
 if __name__ == "__main__":
     from optparse import OptionParser
     parser = OptionParser(usage="%prog [options] file.txt")
-    parser.add_option("--print", dest="printPlots", type="string", default="png,pdf,txt", help="print out plots in this format or formats (e.g. 'png,pdf,txt')");
-    parser.add_option("--ngroup", dest="ngroup", type=int, default=None, help="average the pulse every ngroup samples");
-
+    addTxt2PulseOptions(parser)
     (options, args) = parser.parse_args()
     PulsePlot = PulseTxtFile(args[0],options)
     ext = options.printPlots 
