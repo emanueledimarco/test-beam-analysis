@@ -130,7 +130,7 @@ class PulseTxtFile:
             c1.Print("%s_%s.%s"%(saveName,self.channel,ext))
     
 def addTxt2PulseOptions(parser):
-    parser.add_option("--print", dest="printPlots", type="string", default="png,pdf,txt", help="print out plots in this format or formats (e.g. 'png,pdf,txt')");
+    parser.add_option("--print", dest="printPlots", type="string", default="png,pdf", help="print out plots in this format or formats (e.g. 'png,pdf,txt')");
     parser.add_option("--ngroup", dest="ngroup", type="int", default=100, help="average the pulse every ngroup samples");
     parser.add_option("--minampl", dest="minampl", type="float", default=0.003, help="minimum amplitude required to define a peak (in Volts)");
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     run = tokens[-2]
     chunk = tokens[-1].split("Run")[-1].split(".")[0]
     print "run=%s, chunk=%s" % (run,chunk)
-    PulsePlot.plot("pulse_run%s_chunk%s" %(run,chunk),ext)
+    PulsePlot.plot("pulse_run%s_chunk%s" %(run,chunk),extensions=ext)
 
     peaks = PulsePlot.getPeaks()
     for i,p in enumerate(peaks):

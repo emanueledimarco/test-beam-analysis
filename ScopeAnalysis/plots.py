@@ -24,48 +24,52 @@ class PlotMaker:
     def endJob(self):
         self.tfile.Close()
 
-    def secondaryArrivalTime(self):
-        gr = ROOT.TGraphErrors(len(_xpos))
+    def secondaryVarPlot(self,var,range):
+        gr = ROOT.TGraphErrors(len(_xpos)-1 if "amplitude" in var else len(_xpos))
         gr.SetTitle("")
         point=0
         for run,xpos in _xpos.iteritems():
+            if run==206 and "amplitude" in var: continue # saturation: too close to cathode
             cut = "nPeaks==2 && run==%d" % run
             if ROOT.gROOT.FindObject("h_dt") != None: ROOT.gROOT.FindObject("h_dt").Delete()
-            h_dt = ROOT.TH1D("h_dt","h_dt",200,10,100)
-            self.tree.Draw("time_pmt[1]-time_pmt[0]>>h_dt",cut)
-            mean,rms = h_dt.GetMean(),h_dt.GetRMS()
+            self.tree.Draw('{var}>>h_dt(100,{min},{max})'.format(var=var,min=range[0],max=range[1]),cut)
+            h_dt=ROOT.gROOT.FindObject("h_dt")
+            mean,rms = h_dt.GetMean(),h_dt.GetMeanError()
             gr.SetPoint(point,xpos,mean)
             gr.SetPointError(point,0,rms)
             point +=1
+        customROOTstyle()
         c1 = ROOT.TCanvas("dist_canvas","dist",600,600)
         ROOT.gStyle.SetOptFit(11111)
         gr.SetMarkerStyle(21)
         gr.SetMarkerSize(0.4)
         gr.Draw("APE")
-        gr.GetXaxis().SetNdivisions(510)
-        gr.GetXaxis().SetTitleFont(42)
-        gr.GetXaxis().SetTitleSize(0.05)
-        gr.GetXaxis().SetTitleOffset(0.9)
-        gr.GetXaxis().SetLabelFont(42)
-        gr.GetXaxis().SetLabelSize(0.05)
-        gr.GetXaxis().SetLabelOffset(0.007)
-        gr.GetYaxis().SetTitleFont(42)
-        gr.GetYaxis().SetTitleSize(0.05)
-        gr.GetYaxis().SetTitleOffset(0.9)
-        gr.GetYaxis().SetLabelFont(42)
-        gr.GetYaxis().SetLabelSize(0.05)
-        gr.GetYaxis().SetLabelOffset(0.007)
         gr.GetXaxis().SetTitle("x position [cm]")
-        gr.GetYaxis().SetTitle("PMT #Deltat [ns]")
+        gr.GetYaxis().SetTitle(range[2])
         gr.Fit("pol1")
         gr.Draw("APE")
-
-        c1.Print("distance.pdf")
+        for ext in self.options.printPlots.split(','):
+            plotname=var.replace("[",""); plotname=plotname.replace("]","")
+            plotname=plotname.replace("(",""); plotname=plotname.replace(")","");
+            plotname=plotname.replace("/","_over_")
+            c1.Print('%s.%s'%(plotname,ext))
 
 if __name__ == "__main__":
+    from optparse import OptionParser
+    parser = OptionParser(usage="%prog [options] file.txt")
+    parser.add_option("--print", dest="printPlots", type="string", default="png,pdf", help="print out plots in this format or formats (e.g. 'png,pdf,txt')");
+    (options, args) = parser.parse_args()
 
-    pm = PlotMaker("reco.root")
+    pm = PlotMaker("reco_all.root",options)
     pm.beginJob()
-    pm.secondaryArrivalTime()
+    vars = {'time_pmt[1]-time_pmt[0]':(10,100,'PMT #Deltat [ns]'),
+            'abs(amplitude_pmt[0])/abs(amplitude_pmt[1])/abs(amplitude_calo)':(0,1,'Primary/Secondary/Calo Ampl'),
+            'abs(amplitude_pmt[0])/abs(amplitude_pmt[1])':(0,1,'Primary/Secondary Ampl'),
+            'abs(amplitude_pmt[0])/abs(amplitude_calo)':(0,0.15,'Primary/Calo Ampl'),
+            'abs(amplitude_pmt[1])':(0,0.1,'Secondary Ampl [V]'),
+            'abs(amplitude_pmt[1])/abs(amplitude_calo)':(0,0.5,'Secondary/Calo Ampl') }
+    for var,range in vars.iteritems():
+        pm.secondaryVarPlot(var,range)
+
     pm.endJob()
 
